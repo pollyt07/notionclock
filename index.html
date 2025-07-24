@@ -5,28 +5,27 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Notion Flip Clock Widget</title>
   <style>
-    /* make body fill the container, use your floral as background */
+    /* full-screen floral background */
     html, body {
       margin: 0;
       padding: 0;
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: url('flowermainbanner.jpg') center/cover no-repeat;
+      background: url('flower.jpg') center/cover no-repeat;
       font-family: Georgia, 'Times New Roman', Times, serif;
     }
 
     /* center the clock */
     .clock {
       position: absolute;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       display: flex;
       gap: 1rem;
     }
 
-    /* each flip panel */
+    /* each digit panel */
     .flip-panel {
       position: relative;
       width: 5rem;
@@ -34,89 +33,115 @@
       perspective: 800px;
     }
 
-    .flip-inner {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      transform-style: preserve-3d;
-      transition: transform 0.6s ease-in-out;
-    }
-
-    /* front/back faces */
-    .flip-face {
+    /* top & bottom halves */
+    .flip-top,
+    .flip-bottom {
       position: absolute;
       width: 100%;
       height: 50%;
-      background: transparent;
-      color: #fff;
+      overflow: hidden;
+      backface-visibility: hidden;
+    }
+    .flip-top {
+      top: 0;
+      transform-origin: bottom;
+    }
+    .flip-bottom {
+      bottom: 0;
+      transform-origin: top;
+    }
+
+    /* current + next faces */
+    .flip-top .current,
+    .flip-top .next,
+    .flip-bottom .current,
+    .flip-bottom .next {
+      position: absolute;
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 3.5rem;
-      backface-visibility: hidden;
-      border-radius: 0.2rem;
+      color: #fff;
+      background: transparent;
     }
 
-    /* top half */
-    .face-top {
-      top: 0;
-      transform-origin: bottom;
-    }
-
-    /* bottom half, hidden initially under rotation */
-    .face-bottom {
-      bottom: 0;
+    /* hidden starting positions */
+    .flip-top .next {
       transform: rotateX(90deg);
-      transform-origin: top;
+    }
+    .flip-bottom .next {
+      transform: rotateX(-90deg);
     }
 
-    /* when we flip, rotate inner container */
-    .flipped .flip-inner {
-      transform: rotateX(-90deg);
+    /* fold animations */
+    @keyframes foldDown {
+      0%   { transform: rotateX(0deg); }
+      100% { transform: rotateX(-90deg); }
+    }
+    @keyframes foldUp {
+      0%   { transform: rotateX(90deg); }
+      100% { transform: rotateX(0deg); }
+    }
+
+    /* trigger animations */
+    .flip-panel.flipping .flip-top .current,
+    .flip-panel.flipping .flip-top .next {
+      animation: foldDown 0.3s ease-in forwards;
+    }
+    .flip-panel.flipping .flip-bottom .current,
+    .flip-panel.flipping .flip-bottom .next {
+      animation: foldUp 0.3s ease-out 0.3s forwards;
     }
   </style>
 </head>
 <body>
   <div class="clock">
-    <div class="flip-panel" id="hours">
-      <div class="flip-inner">
-        <div class="flip-face face-top">00</div>
-        <div class="flip-face face-bottom">00</div>
-      </div>
-    </div>
-    <div class="flip-panel" id="minutes">
-      <div class="flip-inner">
-        <div class="flip-face face-top">00</div>
-        <div class="flip-face face-bottom">00</div>
-      </div>
-    </div>
+    <div class="flip-panel" id="hours"></div>
+    <div class="flip-panel" id="minutes"></div>
   </div>
 
   <script>
-    function pad(n){ return n.toString().padStart(2,'0'); }
-
-    function updatePanel(panel, value) {
-      const top = panel.querySelector('.face-top');
-      const bottom = panel.querySelector('.face-bottom');
-      // only flip if changed
-      if (top.textContent !== value) {
-        bottom.textContent = value;
-        panel.classList.add('flipped');
-        // after animation, reset faces
-        setTimeout(()=>{
-          top.textContent = value;
-          panel.classList.remove('flipped');
-        }, 600);
-      }
+    function pad(n) {
+      return String(n).padStart(2, '0');
     }
 
+    // build the two faces for a panel
+    function createFaces(panel, value) {
+      panel.innerHTML = `
+        <div class="flip-top">
+          <div class="current">${value}</div>
+          <div class="next">${value}</div>
+        </div>
+        <div class="flip-bottom">
+          <div class="current">${value}</div>
+          <div class="next">${value}</div>
+        </div>`;
+    }
+
+    // animate to new value
+    function updatePanel(panel, newVal) {
+      const cur = panel.querySelector('.flip-top .current').textContent;
+      if (cur === newVal) return;
+      panel.querySelector('.flip-top .next').textContent = newVal;
+      panel.querySelector('.flip-bottom .next').textContent = newVal;
+      panel.classList.add('flipping');
+      setTimeout(() => {
+        createFaces(panel, newVal);
+      }, 600);
+    }
+
+    // tick every second
     function tick() {
       const now = new Date();
-      updatePanel(document.getElementById('hours'), pad(now.getHours()));
+      updatePanel(document.getElementById('hours'),   pad(now.getHours()));
       updatePanel(document.getElementById('minutes'), pad(now.getMinutes()));
     }
 
-    // start
+    // initial setup & start
+    createFaces(document.getElementById('hours'),   '00');
+    createFaces(document.getElementById('minutes'), '00');
     tick();
     setInterval(tick, 1000);
   </script>
